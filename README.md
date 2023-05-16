@@ -42,7 +42,7 @@ NG50 plotted for 3 different assemblies for comparison: `sample_polished.fasta`,
 5. Merge the assemblies.
 Simply concatenate the short read contigs to the polished contigs.
 
-6. Align `merged.fasta` all-vs-all pairwise with `minimap2` (align every sequence with every other).
+6. Reconcile.
 Before binning the polished contigs, any contigs that have high similarity in genetic contents need to be identified and deduplicated. 
     1. Find the overlaps of genetic contents between the short read contigs (src) and long read contigs (lrc) by running an all-vs-all pairwise alignment on the merged `contig.fasta` file. Minimap2 was used to perform the alignment, which outputs a `.paf` file containing the resulting information.
     ```
@@ -52,6 +52,19 @@ Before binning the polished contigs, any contigs that have high similarity in ge
 
 7. Align the short read sequences to the final assembly.
 Finally, the short reads are aligned to the deduplicated polished assembly. Bowtie2 was used for this step. The output BAM file was sorted using samtools before next step.
-
+    ```
+    bowtie2-build sample_Flye.fasta bowtie_index/sample
+    bowtie2 -x bowtie_index/sample -U sample_sr.fastq | samtools view -bS - > sample.bam
+    samtools sort sample.bam -o sample_sorted.bam
+    ```
 8. Binning.
 The finalized assembly file and sorted BAM file are used to run MetaBAT 2, a software tool to cluster metagenomic data into taxonomic bins. 
+    ```
+    runMetaBat.sh -v -d -m 1500 sample_assembly.fasta sample_sorted.bam
+    ````
+9. Assessment.
+To understand the quality of the resulting bins, checkm was used to generate a summary report file.
+    ````
+    checkm lineage_wf -t 8 -x fa /metabat/result/bins /output/checkm
+    checkm qa -t 8 -o 2 /output/checkm/lineage.ms /output/checkm/ > /output/checkm/sample_bin_stats.txt
+    ````
